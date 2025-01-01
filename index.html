@@ -3,46 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemini Text Generator</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Gemini Chat</title>
+    <style>
+      body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+        }
+
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            width: 80%;
+            max-width: 600px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            resize: vertical;
+        }
+
+        button {
+            background-color: #5cb85c;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        button:hover {
+            background-color: #4cae4c;
+        }
+
+        #response {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+    </style>
 </head>
 <body>
-    <h1>Gemini Text Generator</h1>
-    <textarea id="promptInput" placeholder="Enter your prompt here"></textarea>
-    <button id="generateButton">Generate Text</button>
-    <div id="responseOutput"></div>
+    <div class="container">
+        <h1>Gemini Chat</h1>
+        <textarea id="prompt" placeholder="Enter your prompt here"></textarea>
+        <button id="sendBtn">Send</button>
+        <div id="response"></div>
+    </div>
+
     <script>
-        const generateButton = document.getElementById('generateButton');
-        const promptInput = document.getElementById('promptInput');
-        const responseOutput = document.getElementById('responseOutput');
-    
-        generateButton.addEventListener('click', async () => {
-            const prompt = promptInput.value;
-            if(!prompt.trim()) {
-                 alert("Prompt can't be empty");
-                 return;
-            }
-             responseOutput.textContent = "Generating..."
-            try {
-                 const response = await fetch('geminiserver.vercel.app/generate-text', { // REPLACE WITH YOUR SERVER DEPLOYED URL
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ prompt })
-                });
+        document.addEventListener('DOMContentLoaded', () => {
+            const promptInput = document.getElementById('prompt');
+            const sendButton = document.getElementById('sendBtn');
+            const responseDiv = document.getElementById('response');
 
-                 if (!response.ok) {
-                    const responseJson = await response.json();
-                    throw new Error(`Failed to generate text : ${responseJson.error}`)
-                 }
+            sendButton.addEventListener('click', async () => {
+                const prompt = promptInput.value;
+                if (!prompt) {
+                    alert('Please enter a prompt.');
+                    return;
+                }
 
-                 const data = await response.json();
-                 responseOutput.textContent = data.response;
-             } catch (error) {
-                 responseOutput.textContent = `Error: ${error.message}`
-                 console.error("Error sending request", error)
-             }
+                try {
+                   const response = await fetch('https://exquisite-concha-fce90e.netlify.app/generate', {
+                      method: 'POST',
+                       headers: {
+                           'Content-Type': 'application/json'
+                       },
+                       body: JSON.stringify({ prompt: prompt })
+                    });
+
+                    if (!response.ok) {
+                      throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    if(data.candidates && data.candidates.length > 0){
+                         responseDiv.textContent = data.candidates[0].content.parts[0].text;
+                    }else{
+                         responseDiv.textContent = "No response from API";
+                    }
+                } catch (error) {
+                    console.error('Failed to fetch response from backend:', error);
+                    responseDiv.textContent = 'Failed to get response.';
+                }
+             });
         });
     </script>
 </body>
