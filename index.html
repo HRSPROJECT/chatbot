@@ -3,188 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic Chatbot with OCR</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #f0f2f5;
-            margin: 0;
-        }
-        .container {
-            background: white;
-            padding: 15px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 600px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-        .chat-header {
-            font-size: 1.5em;
-            margin-bottom: 10px;
-            text-align: center;
-            color: #007bff;
-        }
-        .chat-body {
-            flex-grow: 1;
-            overflow-y: auto;
-            margin-bottom: 10px;
-            padding: 10px;
-            background: #e9eff6;
-            border-radius: 10px;
-        }
-        .chat-message {
-            padding: 10px;
-            border-radius: 8px;
-            margin: 5px 0;
-            max-width: 80%;
-            word-wrap: break-word;
-            position: relative;
-            animation: fadeIn 0.3s ease-in;
-            
-        }
-        .chat-message.user {
-            background-color: #d1ffd1;
-            align-self: flex-end;
-        }
-        .chat-message.bot {
-            background-color: #d1e0ff;
-            align-self: flex-start;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .chat-input {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        .chat-input input[type="text"] {
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            flex-grow: 1;
-            margin-right: 10px;
-        }
-        .chat-input input[type="url"] {
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            flex-grow: 1;
-            margin-right: 10px;
-        }
-        .chat-input button {
-            padding: 10px 15px;
-            border: none;
-            background-color: #007bff;
-            color: white;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-            flex-shrink: 0;
-        }
-        .chat-input button:hover {
-            background-color: #0056b3;
-        }
-        .chat-input select {
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            margin-right: 10px;
-            flex-shrink: 0;
-        }
-    </style>
+    <title>Gemini Text Generator</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <div class="chat-header">Chatbot with OCR</div>
-        <div class="chat-body" id="chatBody">
-            <!-- Messages will be appended here dynamically -->
-        </div>
-        <div class="chat-input">
-            <select id="inputType" onchange="changeInputType()">
-                <option value="text">Text</option>
-                <option value="url">Image URL</option>
-            </select>
-            <input type="text" id="userInput" placeholder="Enter your message">
-            <input type="url" id="imageInput" placeholder="Enter image URL" style="display: none;">
-            <button onclick="sendMessage()">Send</button>
-        </div>
-    </div>
+    <h1>Gemini Text Generator</h1>
+    <textarea id="promptInput" placeholder="Enter your prompt here"></textarea>
+    <button id="generateButton">Generate Text</button>
+    <div id="responseOutput"></div>
     <script>
-        let sessionId = null;
-
-        function changeInputType() {
-            const inputType = document.getElementById('inputType').value;
-            const userInput = document.getElementById('userInput');
-            const imageInput = document.getElementById('imageInput');
-            
-            if (inputType === 'text') {
-                userInput.style.display = 'block';
-                imageInput.style.display = 'none';
-            } else {
-                userInput.style.display = 'none';
-                imageInput.style.display = 'block';
+        const generateButton = document.getElementById('generateButton');
+        const promptInput = document.getElementById('promptInput');
+        const responseOutput = document.getElementById('responseOutput');
+    
+        generateButton.addEventListener('click', async () => {
+            const prompt = promptInput.value;
+            if(!prompt.trim()) {
+                 alert("Prompt can't be empty");
+                 return;
             }
-        }
+             responseOutput.textContent = "Generating..."
+            try {
+                 const response = await fetch('geminiserver.vercel.app/generate-text', { // REPLACE WITH YOUR SERVER DEPLOYED URL
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ prompt })
+                });
 
-        async function sendMessage() {
-            const inputType = document.getElementById('inputType').value;
-            const userInput = document.getElementById('userInput').value;
-            const imageInput = document.getElementById('imageInput').value;
-            let message = '';
+                 if (!response.ok) {
+                    const responseJson = await response.json();
+                    throw new Error(`Failed to generate text : ${responseJson.error}`)
+                 }
 
-            if (inputType === 'text' && userInput.trim() !== "") {
-                message = userInput;
-                appendMessage(message, 'user');
-                await fetchMessage({ input: message });
-            } else if (inputType === 'url' && imageInput.trim() !== "") {
-                message = imageInput;
-                appendMessage(message, 'user');
-                await fetchMessage({ imageUrl: message });
-            }
-
-            document.getElementById('userInput').value = '';
-            document.getElementById('imageInput').value = '';
-        }
-
-        async function fetchMessage(body) {
-            const response = await fetch('http://localhost:3000/gemini', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-session-id': sessionId 
-                },
-                body: JSON.stringify(body)
-            });
-
-            const data = await response.json();
-            if (response.ok && data.success) {
-                if (!sessionId) {
-                    sessionId = response.headers.get('x-session-id');
-                }
-                appendMessage(data.response, 'bot');
-            } else {
-                console.error("Error:", data.error);
-                appendMessage("Error: " + data.error, 'bot');
-            }
-        }
-
-        function appendMessage(message, sender) {
-            const chatBody = document.getElementById('chatBody');
-            const newMessage = document.createElement('div');
-            newMessage.classList.add('chat-message', sender);
-            newMessage.innerText = message;
-            chatBody.appendChild(newMessage);
-            chatBody.scrollTop = chatBody.scrollHeight;
-        }
+                 const data = await response.json();
+                 responseOutput.textContent = data.response;
+             } catch (error) {
+                 responseOutput.textContent = `Error: ${error.message}`
+                 console.error("Error sending request", error)
+             }
+        });
     </script>
 </body>
 </html>
